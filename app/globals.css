@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 240 5% 96%;
+    --card: 240 10% 6%;
+    --card-foreground: 240 5% 96%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 240 5% 96%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 240 5% 96%;
+    --muted: 240 6% 12%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 263 50% 20%;
+    --accent-foreground: 240 5% 96%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 16%;
+    --input: 240 6% 16%;
+    --ring: 263 70% 50%;
+    --radius: 0.5rem;
+  }
+}
+
+body {
+  @apply text-foreground antialiased;
+  background-image: url("https://wallpaperbat.com/img/188757219-anime-girl-wallpaper-4k-purple-wallpaper.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.75) 25%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.15) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 120px 40px rgba(0,0,0,0.4);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
