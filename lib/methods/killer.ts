@@ -7,7 +7,7 @@ export async function flood(
 ): Promise<void> {
   const floodFn = get.flood
   const workers: Promise<void>[] = []
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 8; i++) {
     workers.push(floodFn(url, rpc, onStats))
   }
   await Promise.all(workers)
