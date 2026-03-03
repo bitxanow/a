@@ -140,19 +140,19 @@ export default function Home() {
   const fetchState = useCallback(async () => {
     if (fetchingRef.current) return
     fetchingRef.current = true
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 8000)
     try {
-      const ctrl = new AbortController()
-      const to = setTimeout(() => ctrl.abort(), 8000)
       const res = await fetch(`/api/attack/status?t=${Date.now()}`, {
         cache: "no-store",
         signal: ctrl.signal,
       })
-      clearTimeout(to)
       const data = await res.json()
       setState(data)
     } catch {
-      // Timeout ou erro: mantém state anterior para Stop continuar clicável
+      // AbortError/timeout ou rede: mantém state anterior
     } finally {
+      clearTimeout(to)
       fetchingRef.current = false
     }
   }, [])
@@ -182,9 +182,9 @@ export default function Home() {
     if (!target.trim()) return
     setLoading(true)
     setAttackJustStarted(false)
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 15000)
     try {
-      const ctrl = new AbortController()
-      const to = setTimeout(() => ctrl.abort(), 15000)
       const res = await fetch("/api/attack/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,26 +199,30 @@ export default function Home() {
           duration,
         }),
       })
-      clearTimeout(to)
       const data = await res.json()
       if (res.ok) {
         setAttackJustStarted(true)
         if (data.state) setState(data.state)
         else await fetchState()
       }
+    } catch {
+      // AbortError ou rede: ignora
     } finally {
+      clearTimeout(to)
       setLoading(false)
     }
   }
 
   const stop = async () => {
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 10000)
     try {
-      const ctrl = new AbortController()
-      const to = setTimeout(() => ctrl.abort(), 10000)
       await fetch("/api/attack/stop", { method: "POST", signal: ctrl.signal })
-      clearTimeout(to)
       setAttackJustStarted(false)
+    } catch {
+      // AbortError ou rede: ignora
     } finally {
+      clearTimeout(to)
       await fetchState()
     }
   }
