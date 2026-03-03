@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Silence",
-  description: "Layer7/Layer4",
+  title: "BitNuke",
+  description: "Layer7 / Layer4",
 }
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className="dark">
-      <body className="min-h-screen text-foreground">
+      <body className="min-h-screen bg-[#0d0d0d] text-foreground">
         {children}
       </body>
     </html>
