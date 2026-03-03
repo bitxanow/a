@@ -61,7 +61,7 @@ export default function Home() {
   const [threads, setThreads] = useState(DEFAULT_CONFIG.threads)
   const [rpc, setRpc] = useState(DEFAULT_CONFIG.rpc)
   const [duration, setDuration] = useState(DEFAULT_CONFIG.duration)
-  const [state, setState] = useState<AttackState | null>(null)
+  const [attacks, setAttacks] = useState<AttackState[]>([])
   const [loading, setLoading] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [selectedTool, setSelectedTool] = useState<string>("PING")
@@ -148,7 +148,7 @@ export default function Home() {
         signal: ctrl.signal,
       })
       const data = await res.json()
-      setState(data)
+      setAttacks(Array.isArray(data) ? data : data.attacks ?? [])
     } catch {
       // AbortError/timeout ou rede: mantém state anterior
     } finally {
@@ -162,14 +162,15 @@ export default function Home() {
   }, [fetchState])
 
   useEffect(() => {
-    if (state?.running === false) setAttackJustStarted(false)
-  }, [state?.running])
+    if (!attacks.some((a) => a.running)) setAttackJustStarted(false)
+  }, [attacks])
 
+  const hasAnyRunning = attacks.some((a) => a.running)
   useEffect(() => {
-    if (!state?.running) return
+    if (!hasAnyRunning) return
     const iv = setInterval(fetchState, 1000)
     return () => clearInterval(iv)
-  }, [state?.running, fetchState])
+  }, [hasAnyRunning, fetchState])
 
   useEffect(() => {
     if (methodType === "layer7") setMethod("GET")
@@ -202,8 +203,8 @@ export default function Home() {
       const data = await res.json()
       if (res.ok) {
         setAttackJustStarted(true)
-        if (data.state) setState(data.state)
-        else await fetchState()
+        setAttacks(data.attacks ?? [])
+        if (!data.attacks?.length) await fetchState()
       }
     } catch {
       // AbortError ou rede: ignora
@@ -213,11 +214,16 @@ export default function Home() {
     }
   }
 
-  const stop = async () => {
+  const stop = async (id?: string) => {
     const ctrl = new AbortController()
     const to = setTimeout(() => ctrl.abort(), 10000)
     try {
-      await fetch("/api/attack/stop", { method: "POST", signal: ctrl.signal })
+      await fetch("/api/attack/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: ctrl.signal,
+        body: JSON.stringify(id ? { id } : {}),
+      })
       setAttackJustStarted(false)
     } catch {
       // AbortError ou rede: ignora
@@ -227,7 +233,10 @@ export default function Home() {
     }
   }
 
-  const canStop = state?.running || attackJustStarted
+  const canStop = hasAnyRunning || attackJustStarted
+  const primaryAttack = attacks.find((a) => a.running) ?? attacks[attacks.length - 1]
+  const totalRequests = attacks.reduce((s, a) => s + a.requests, 0)
+  const totalBytes = attacks.reduce((s, a) => s + a.bytes, 0)
 
   const runGlobalCheck = async () => {
     const host = target.trim()
@@ -246,12 +255,12 @@ export default function Home() {
     }
   }
 
-  const pingChartData = (state?.pingHistory ?? []).map((p) => ({
+  const pingChartData = (primaryAttack?.pingHistory ?? []).map((p) => ({
     time: new Date(p.time).toLocaleTimeString(),
     ms: p.ms < 0 ? 0 : p.ms,
   }))
 
-  const reqChartData = (state?.requestHistory ?? []).map((r) => ({
+  const reqChartData = (primaryAttack?.requestHistory ?? []).map((r) => ({
     time: new Date(r.time).toLocaleTimeString(),
     requests: r.requests,
   }))
@@ -280,12 +289,11 @@ export default function Home() {
             placeholder="URL ou IP:PORT"
             value={target}
             onChange={(e) => setTarget(e.target.value)}
-            disabled={!!state?.running}
             className="max-w-md border-white/10 bg-black/40 backdrop-blur-sm font-mono text-sm"
           />
           <Button
             onClick={start}
-            disabled={!!state?.running || loading}
+            disabled={loading}
             className="font-medium text-black hover:brightness-90 transition-all"
             style={{ backgroundColor: accentColor }}
           >
@@ -294,7 +302,7 @@ export default function Home() {
           </Button>
           <Button
             variant="outline"
-            onClick={stop}
+            onClick={() => stop()}
             disabled={!canStop}
             className="border-white/10"
           >
@@ -412,7 +420,6 @@ export default function Home() {
                     type="number"
                     value={threads}
                     onChange={(e) => setThreads(parseInt(e.target.value) || 500)}
-                    disabled={!!state?.running}
                     className="mt-1 border-white/10 bg-black/40 backdrop-blur-sm font-mono text-xs"
                   />
                 </div>
@@ -422,7 +429,6 @@ export default function Home() {
                     type="number"
                     value={rpc}
                     onChange={(e) => setRpc(parseInt(e.target.value) || 50)}
-                    disabled={!!state?.running}
                     className="mt-1 border-white/10 bg-black/40 backdrop-blur-sm font-mono text-xs"
                   />
                 </div>
@@ -433,7 +439,6 @@ export default function Home() {
                   type="number"
                   value={duration}
                   onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-                  disabled={!!state?.running}
                   className="mt-1 border-white/10 bg-black/40 backdrop-blur-sm font-mono text-xs"
                 />
               </div>
@@ -447,26 +452,58 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase text-muted-foreground">Requisições</span>
               <span className="font-mono text-xl font-semibold tabular-nums" style={{ color: accentColor }}>
-                {state ? formatNum(state.requests) : "—"}
+                {attacks.length ? formatNum(totalRequests) : "—"}
               </span>
             </div>
             <div className="h-4 w-px bg-white/10" />
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase text-muted-foreground">Bytes</span>
               <span className="font-mono text-xl font-semibold tabular-nums">
-                {state ? formatBytes(state.bytes) : "—"}
+                {attacks.length ? formatBytes(totalBytes) : "—"}
               </span>
             </div>
-            {state?.running && (
+            {hasAnyRunning && (
               <>
                 <div className="h-4 w-px bg-[#1f1f1f]" />
                 <span className="flex items-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${accentColor}26`, color: accentColor }}>
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: accentColor }} />
-                  LIVE
+                  LIVE {attacks.filter((a) => a.running).length}
                 </span>
               </>
             )}
           </div>
+
+          {/* Lista de ataques */}
+          {attacks.length > 0 && (
+            <div className="rounded border border-white/10 bg-black/50 backdrop-blur-sm p-3">
+              <div className="mb-2 text-[10px] uppercase text-muted-foreground">
+                Ataques ({attacks.length})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {attacks.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 rounded border border-white/10 bg-black/40 px-3 py-1.5 text-xs"
+                  >
+                    <span className="font-mono truncate max-w-[180px]" title={a.target}>
+                      {a.target}
+                    </span>
+                    <span className="text-muted-foreground">{a.method}</span>
+                    {a.running && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => stop(a.id)}
+                        className="h-6 px-1.5 text-[10px] text-red-400 hover:text-red-300"
+                      >
+                        Parar
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Charts row */}
           <div className="grid gap-4 lg:grid-cols-2">
@@ -475,7 +512,7 @@ export default function Home() {
                 <Wifi className="h-3 w-3" />
                 Ping
               </div>
-              {state && pingChartData.length > 0 ? (
+              {primaryAttack && pingChartData.length > 0 ? (
                 <div className="h-28">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={pingChartData}>
@@ -486,7 +523,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex h-28 items-center justify-center text-xs text-muted-foreground">
-                  {state ? "Coletando..." : "—"}
+                  {primaryAttack ? "Coletando..." : "—"}
                 </div>
               )}
             </div>
@@ -495,7 +532,7 @@ export default function Home() {
                 <BarChart3 className="h-3 w-3" />
                 Progresso
               </div>
-              {state ? (
+              {primaryAttack ? (
                 <div className="h-28">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={reqChartData}>
@@ -508,7 +545,9 @@ export default function Home() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex h-28 items-center justify-center text-xs text-muted-foreground">—</div>
+                <div className="flex h-28 items-center justify-center text-xs text-muted-foreground">
+                  {attacks.length ? "—" : "—"}
+                </div>
               )}
             </div>
           </div>

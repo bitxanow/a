@@ -4,6 +4,6 @@ import { getState } from "@/lib/attack"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const state = getState()
-  return NextResponse.json(state)
+  const attacks = getState()
+  return NextResponse.json(attacks)
 }

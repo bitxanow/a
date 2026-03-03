@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       cfg.duration
     )
 
-    return NextResponse.json({ id, ok: true, state: getState() })
+    return NextResponse.json({ id, ok: true, attacks: getState() })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
