@@ -10,25 +10,34 @@
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 9%;
     --popover-foreground: 0 0% 95%;
-    --primary: 25 95% 53%;
+    --primary: 0 84% 60%;
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 95%;
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 55%;
-    --accent: 25 95% 53%;
+    --accent: 0 84% 60%;
     --accent-foreground: 0 0% 0%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 25 95% 53%;
+    --ring: 0 84% 60%;
     --radius: 0.25rem;
   }
 }
 
+html {
+  min-height: 100%;
+}
+
 body {
-  @apply bg-[#0d0d0d] text-foreground antialiased;
-  font-feature-settings: "rlig" 1, "calt" 1;
   min-height: 100vh;
+  background-image: url("https://preview.redd.it/anime-girl-demon-horn-red-eyes-4k-wallpaper-3840x2160-v0-g2hgw3a9n94f1.jpeg?width=1080&crop=smart&auto=webp&s=a397abe7352035a98a67a17d1ce62dc8e2fee4d1");
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  @apply text-foreground antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
