@@ -141,9 +141,17 @@ export default function Home() {
     if (fetchingRef.current) return
     fetchingRef.current = true
     try {
-      const res = await fetch(`/api/attack/status?t=${Date.now()}`, { cache: "no-store" })
+      const ctrl = new AbortController()
+      const to = setTimeout(() => ctrl.abort(), 8000)
+      const res = await fetch(`/api/attack/status?t=${Date.now()}`, {
+        cache: "no-store",
+        signal: ctrl.signal,
+      })
+      clearTimeout(to)
       const data = await res.json()
       setState(data)
+    } catch {
+      // Timeout ou erro: mantém state anterior para Stop continuar clicável
     } finally {
       fetchingRef.current = false
     }
@@ -152,6 +160,10 @@ export default function Home() {
   useEffect(() => {
     fetchState()
   }, [fetchState])
+
+  useEffect(() => {
+    if (state?.running === false) setAttackJustStarted(false)
+  }, [state?.running])
 
   useEffect(() => {
     if (!state?.running) return
@@ -164,14 +176,20 @@ export default function Home() {
     else setMethod("TCP")
   }, [methodType])
 
+  const [attackJustStarted, setAttackJustStarted] = useState(false)
+
   const start = async () => {
     if (!target.trim()) return
     setLoading(true)
+    setAttackJustStarted(false)
     try {
+      const ctrl = new AbortController()
+      const to = setTimeout(() => ctrl.abort(), 15000)
       const res = await fetch("/api/attack/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
+        signal: ctrl.signal,
         body: JSON.stringify({
           methodType,
           method,
@@ -181,19 +199,31 @@ export default function Home() {
           duration,
         }),
       })
+      clearTimeout(to)
       const data = await res.json()
-      if (data.state) setState(data.state)
-      else if (res.ok) await fetchState()
-      if (res.ok && !data.state) await fetchState()
+      if (res.ok) {
+        setAttackJustStarted(true)
+        if (data.state) setState(data.state)
+        else await fetchState()
+      }
     } finally {
       setLoading(false)
     }
   }
 
   const stop = async () => {
-    await fetch("/api/attack/stop", { method: "POST" })
-    await fetchState()
+    try {
+      const ctrl = new AbortController()
+      const to = setTimeout(() => ctrl.abort(), 10000)
+      await fetch("/api/attack/stop", { method: "POST", signal: ctrl.signal })
+      clearTimeout(to)
+      setAttackJustStarted(false)
+    } finally {
+      await fetchState()
+    }
   }
+
+  const canStop = state?.running || attackJustStarted
 
   const runGlobalCheck = async () => {
     const host = target.trim()
@@ -261,7 +291,7 @@ export default function Home() {
           <Button
             variant="outline"
             onClick={stop}
-            disabled={!state?.running}
+            disabled={!canStop}
             className="border-white/10"
           >
             <Square className="h-4 w-4" />
