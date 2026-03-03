@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { startAttack } from "@/lib/attack"
+import { startAttack, getState } from "@/lib/attack"
 import { appendAction } from "@/lib/database"
 import { LAYER7_METHODS, LAYER4_METHODS, DEFAULT_CONFIG } from "@/lib/config"
 import { randomUUID } from "crypto"
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       cfg.duration
     )
 
-    return NextResponse.json({ id, ok: true })
+    return NextResponse.json({ id, ok: true, state: getState() })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

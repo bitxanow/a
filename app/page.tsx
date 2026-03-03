@@ -21,10 +21,10 @@ import {
   Activity,
   Server,
   Settings,
-  FileText,
   BarChart3,
   Wifi,
   Wrench,
+  Globe,
 } from "lucide-react"
 import { LAYER7_METHODS, LAYER4_METHODS, DEFAULT_CONFIG, METHOD_LABELS } from "@/lib/config"
 import { METHOD_ICONS, TOOL_ICONS, METHOD_TYPE_ICONS } from "@/lib/icons"
@@ -68,6 +68,11 @@ export default function Home() {
   const [toolInput, setToolInput] = useState("")
   const [toolResult, setToolResult] = useState<string | null>(null)
   const [toolLoading, setToolLoading] = useState(false)
+  const [globalCheck, setGlobalCheck] = useState<{
+    nodes: { location: string; result: string; time: number; code: string; ip: string }[]
+    loading: boolean
+    permanent_link?: string
+  } | null>(null)
 
   const methods = methodType === "layer7" ? LAYER7_METHODS : LAYER4_METHODS
   const Layer7Icon = METHOD_TYPE_ICONS.layer7
@@ -132,7 +137,7 @@ export default function Home() {
     if (!target.trim()) return
     setLoading(true)
     try {
-      await fetch("/api/attack/start", {
+      const res = await fetch("/api/attack/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -144,6 +149,8 @@ export default function Home() {
           duration,
         }),
       })
+      const data = await res.json()
+      if (data.state) setState(data.state)
       await fetchState()
     } finally {
       setLoading(false)
@@ -153,6 +160,27 @@ export default function Home() {
   const stop = async () => {
     await fetch("/api/attack/stop", { method: "POST" })
     await fetchState()
+  }
+
+  const runGlobalCheck = async () => {
+    const host = target.trim() || toolInput.trim()
+    if (!host) return
+    setGlobalCheck((prev) => (prev ? { ...prev, loading: true } : { nodes: [], loading: true }))
+    try {
+      const res = await fetch(`/api/tools/checkhost?host=${encodeURIComponent(host)}`)
+      const data = await res.json()
+      if (data.nodes) {
+        setGlobalCheck({
+          nodes: data.nodes,
+          loading: false,
+          permanent_link: data.permanent_link,
+        })
+      } else {
+        setGlobalCheck({ nodes: [], loading: false })
+      }
+    } catch {
+      setGlobalCheck((prev) => (prev ? { ...prev, loading: false } : null))
+    }
   }
 
   const pingChartData = (state?.pingHistory ?? []).map((p) => ({
@@ -440,22 +468,77 @@ export default function Home() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <FileText className="h-4 w-4" />
-                Logs
+                <Globe className="h-4 w-4" />
+                Status global (por país)
               </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runGlobalCheck}
+                disabled={globalCheck?.loading || (!target.trim() && !toolInput.trim())}
+              >
+                {globalCheck?.loading ? "Verificando..." : "Verificar"}
+              </Button>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-48 rounded-md border border-border/50 p-3 font-mono text-xs">
-                {(state?.logs ?? []).length > 0 ? (
-                  (state?.logs ?? []).map((log, i) => (
-                    <div key={i} className="py-0.5">
-                      {log}
-                    </div>
-                  ))
+              <ScrollArea className="h-48 rounded-md border border-border/50">
+                {globalCheck?.nodes && globalCheck.nodes.length > 0 ? (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border/50">
+                        <th className="p-2 text-left font-medium">Local</th>
+                        <th className="p-2 text-left font-medium">Resultado</th>
+                        <th className="p-2 text-right font-medium">Tempo</th>
+                        <th className="p-2 text-center font-medium">Code</th>
+                        <th className="p-2 text-left font-medium">IP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {globalCheck.nodes.map((row, i) => (
+                        <tr key={i} className="border-b border-border/30 hover:bg-muted/30">
+                          <td className="p-2">{row.location}</td>
+                          <td className="p-2">
+                            <span
+                              className={
+                                row.result === "OK"
+                                  ? "text-green-500"
+                                  : row.result === "Aguardando..."
+                                    ? "text-muted-foreground"
+                                    : "text-red-400"
+                              }
+                            >
+                              {row.result}
+                            </span>
+                          </td>
+                          <td className="p-2 text-right font-mono">
+                            {row.time > 0 ? `${row.time}ms` : "-"}
+                          </td>
+                          <td className="p-2 text-center font-mono">{row.code}</td>
+                          <td className="p-2 font-mono text-muted-foreground">{row.ip}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : globalCheck?.loading ? (
+                  <div className="flex h-48 items-center justify-center text-muted-foreground">
+                    Consultando check-host.net (vários países)...
+                  </div>
                 ) : (
-                  <p className="text-muted-foreground">Aguardando logs...</p>
+                  <div className="flex h-48 items-center justify-center text-muted-foreground">
+                    Preencha o alvo e clique em Verificar para ver status por país
+                  </div>
                 )}
               </ScrollArea>
+              {globalCheck?.permanent_link && (
+                <a
+                  href={globalCheck.permanent_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 block text-xs text-primary hover:underline"
+                >
+                  Ver relatório completo no Check-Host →
+                </a>
+              )}
             </CardContent>
           </Card>
         </div>
