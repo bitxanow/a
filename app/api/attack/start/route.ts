@@ -4,6 +4,8 @@ import { appendAction } from "@/lib/database"
 import { LAYER7_METHODS, LAYER4_METHODS, DEFAULT_CONFIG } from "@/lib/config"
 import { randomUUID } from "crypto"
 
+export const dynamic = "force-dynamic"
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()

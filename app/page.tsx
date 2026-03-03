@@ -141,7 +141,7 @@ export default function Home() {
     if (fetchingRef.current) return
     fetchingRef.current = true
     try {
-      const res = await fetch("/api/attack/status")
+      const res = await fetch(`/api/attack/status?t=${Date.now()}`, { cache: "no-store" })
       const data = await res.json()
       setState(data)
     } finally {
@@ -171,6 +171,7 @@ export default function Home() {
       const res = await fetch("/api/attack/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           methodType,
           method,
@@ -251,7 +252,7 @@ export default function Home() {
           <Button
             onClick={start}
             disabled={!!state?.running || loading}
-            className="font-medium text-black"
+            className="font-medium text-black hover:brightness-90 transition-all"
             style={{ backgroundColor: accentColor }}
           >
             <Play className="h-4 w-4" />
@@ -307,7 +308,7 @@ export default function Home() {
             <Button
               onClick={() => runTool(selectedTool)}
               disabled={toolLoading || (selectedTool !== "DSTAT" && !target.trim())}
-              className="font-medium text-black"
+              className="font-medium text-black hover:brightness-90 transition-all"
               style={{ backgroundColor: accentColor }}
             >
               {toolLoading ? "..." : "Executar"}
@@ -644,7 +645,7 @@ export default function Home() {
               <Button variant="outline" onClick={() => setSettingsOpen(false)} className="border-white/10">
                 Cancelar
               </Button>
-              <Button onClick={saveSettings} className="text-black" style={{ backgroundColor: accentColor }}>
+              <Button onClick={saveSettings} className="text-black hover:brightness-90 transition-all" style={{ backgroundColor: accentColor }}>
                 Salvar
               </Button>
             </div>

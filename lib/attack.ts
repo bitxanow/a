@@ -119,8 +119,12 @@ export async function startAttack(
   for (let i = 0; i < threads; i++) {
     workers.push(
       (async () => {
-        while (state?.running && Date.now() < endTime) {
-          await floodFn(url, rpc, onStats)
+        try {
+          while (state?.running && Date.now() < endTime) {
+            await floodFn(url, rpc, onStats)
+          }
+        } catch (err) {
+          if (state) log(`Worker error: ${err}`)
         }
       })()
     )
@@ -142,7 +146,11 @@ export async function startAttack(
     }
   }, 2000)
 
-  await Promise.all(workers)
+  try {
+    await Promise.all(workers)
+  } catch (err) {
+    if (state) log(`Attack error: ${err}`)
+  }
   if (pingIv) clearInterval(pingIv)
   if (historyIv) clearInterval(historyIv)
   pingIv = null
